@@ -1,54 +1,31 @@
-name: CI
-
+name: Sonar Scan for React Native Mobile Code
 on:
   workflow_dispatch:
-  pull_request:
-    branches:
-      - dev
-      - master
-      - release**
-    paths-ignore:
-      - 'README.md'
-      - 'doc/**'
-      - 'fastlane/**'
-      - 'assets/**'
-      - '.github/**/*.md'
-      - '.github/FUNDING.yml'
-      - '.github/ISSUE_TEMPLATE/**'
-  push:
-    branches:
-      - dev
-      - master
-    paths-ignore:
-      - 'README.md'
-      - 'doc/**'
-      - 'fastlane/**'
-      - 'assets/**'
-      - '.github/**/*.md'
-      - '.github/FUNDING.yml'
-      - '.github/ISSUE_TEMPLATE/**'
-
 jobs:
-  sonar:
+  sonarqube:
+    name: Sonar scan Mobile
     runs-on: self-hosted
-
-    permissions:
-      contents: read
-
     steps:
       - uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
-
-      - name: Cache SonarServer packages
-        uses: actions/cache@v3
+          fetch-depth: 0
+      - name: Setup node
+        uses: actions/setup-node@v3
         with:
-          path: ~/.sonar/cache
-          key: ${{ runner.os }}-sonar
-          restore-keys: ${{ runner.os }}-sonar    
-
-      - name: Build and analyze
+          node-version: 16.13.x
+          cache: npm
+      - name: Install dependencies
+        run: npm install --force
+      - name: Test and coverage
+        run: npm test --coverage
+      - name: Setup sonarqube
+        run: npm install -global sonarqube-scanner
+      - name: SonarQube Scan
+        run: sonar-scanner \
+          -Dsonar.projectKey=aera_mobile_react_native \
+          -Dsonar.sources=. \
+          -Dsonar.host.url={secrets.SONAR_HOST_URL} \
+          -Dsonar.login={secrets.AERA_MOBILE_REACT_NATIVE_TOKEN}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: ./gradlew sonar
+          SONAR_TOKEN: ${{ secrets.AERA_MOBILE_REACT_NATIVE_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
